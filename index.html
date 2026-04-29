@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>사업부 통합 보고 대시보드</title>
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;font-size:14px;color:#1a1a1a;background:#f0f2f5}
+a{text-decoration:none;color:inherit}
+button,input,select,textarea{font-family:inherit;font-size:13px}
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:190px;min-width:190px;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.main{flex:1;overflow-y:auto;background:#f0f2f5}
+.page{padding:24px}
+.sb-hdr{padding:16px 14px 12px;border-bottom:1px solid #e5e7eb}
+.sb-hdr h1{font-size:13px;font-weight:700}
+.sb-hdr p{font-size:10px;color:#9ca3af;margin-top:2px}
+.sb-nav{flex:1;padding:8px 6px}
+.nav-a{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:7px;color:#6b7280;font-size:12px;cursor:pointer;margin-bottom:2px;transition:all .15s;border:none;background:transparent;width:100%;text-align:left;white-space:nowrap;overflow:hidden}
+.nav-a:hover{background:#f3f4f6;color:#1a1a1a}
+.nav-a.active{background:#eff6ff;color:#2563eb;font-weight:700}
+.nav-sep{height:1px;background:#e5e7eb;margin:7px 4px}
+.nav-lbl{font-size:10px;color:#9ca3af;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px}
+.udot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.sb-footer{padding:10px 12px;border-top:1px solid #e5e7eb}
+.avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;flex-shrink:0}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f9fafb}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-p{background:#2563eb;color:#fff;border-color:#2563eb}.btn-p:hover{background:#1d4ed8}
+.btn-d{color:#dc2626;border-color:#fca5a5}.btn-d:hover{background:#fef2f2}
+.btn-sm{padding:4px 9px;font-size:11px}
+.input{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:13px;transition:border .15s;outline:none}
+.input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.lbl{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+.fg{margin-bottom:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:#f8fafc;border-radius:8px;padding:12px 14px}
+.stat .sl{font-size:11px;color:#6b7280;margin-bottom:5px}
+.stat .sv{font-size:22px;font-weight:700}
+.bw{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#eff6ff;color:#2563eb}
+.bm{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#d97706}
+.row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px}
+.ph{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.ph h2{font-size:18px;font-weight:800}
+.empty{text-align:center;padding:48px 0;color:#9ca3af;font-size:13px}
+.tabs{display:flex;border:1px solid #e5e7eb;border-radius:7px;overflow:hidden;width:fit-content;margin-bottom:16px}
+.tab{padding:7px 16px;font-size:12px;border:none;background:#fff;color:#6b7280;cursor:pointer;font-family:inherit}
+.tab:hover{background:#f9fafb}.tab.active{background:#eff6ff;color:#2563eb;font-weight:700}
+.ficon{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.ficon.pdf{background:#fee2e2;color:#dc2626}.ficon.word{background:#dbeafe;color:#2563eb}
+/* calendar */
+.cal{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+.cal-hdr{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #f3f4f6}
+.cdn{padding:7px 0;text-align:center;font-size:10px;font-weight:700;color:#6b7280}
+.cdn.s{color:#dc2626}.cdn.sa{color:#2563eb}
+.cal-row{display:grid;grid-template-columns:repeat(7,1fr)}
+.cc{min-height:56px;padding:3px;border-right:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .1s}
+.cc:hover{background:#f9fafb}.cc.sel{background:#eff6ff}.cc.today .dn{background:#2563eb;color:#fff;font-weight:700}
+.cc.s .dn{color:#dc2626}.cc.sa .dn{color:#2563eb}.cc.empty{cursor:default;background:#fafafa}
+.dn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px;border-radius:50%;font-size:11px}
+.evd{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;padding:0 2px}
+.evdot{width:5px;height:5px;border-radius:50%;display:inline-block}
+/* contacts */
+.ctg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.ctc{background:#fff;border:1px solid #e5e7eb;border-top-width:3px;border-radius:10px;padding:14px}
+.ctl{display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;transition:opacity .15s}
+.ctl:hover{opacity:.7}
+/* perm */
+.pt{width:100%;border-collapse:collapse;font-size:11px}
+.pt th,.pt td{padding:7px 9px;border:1px solid #e5e7eb;text-align:left}
+.pt th{background:#f8fafc;font-weight:700;color:#374151}
+.yes{color:#16a34a;font-size:13px}.no{color:#d1d5db;font-size:13px}
+/* login */
+.login-bg{display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#1e3a5f,#2563eb)}
+.login-box{width:380px;background:#fff;border-radius:16px;padding:40px 36px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.login-ico{width:56px;height:56px;background:#dbeafe;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px}
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding-top:60px;z-index:2000}
+.modal{background:#fff;border-radius:12px;padding:22px;width:380px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.flash{padding:10px 14px;border-radius:7px;font-size:13px;font-weight:500;margin-bottom:12px}
+.flash.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.flash.err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+.toast{position:fixed;bottom:22px;right:22px;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.12)}
+.toast.ok{background:#fff;border:1px solid #bbf7d0;color:#15803d}
+.toast.err{background:#fff;border:1px solid #fecaca;color:#dc2626}
+.up-bar{height:3px;background:#eff6ff;border-radius:3px;overflow:hidden;margin-top:8px}
+.up-fill{height:100%;background:#2563eb;border-radius:3px;animation:upfill 1.5s ease-in-out infinite}
+@keyframes upfill{0%{width:0%}60%{width:75%}100%{width:100%}}
+.flex{display:flex;align-items:center;gap:8px}
+.f1{flex:1;overflow:hidden}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}
+.ts{font-size:12px}.txs{font-size:11px}.tmu{color:#6b7280}.txmu{color:#9ca3af}.fw7{font-weight:700}
+.loading{display:flex;align-items:center;justify-content:center;height:100vh;color:#6b7280;font-size:14px;flex-direction:column;gap:12px}
+.spin{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"><div class="loading"><div class="spin"></div>로딩 중...</div></div>
+
+<script>
+// ╔══════════════════════════════════════════════════════╗
+// ║  ★ 설정 영역 - Supabase 프로젝트 정보를 입력하세요  ║
+// ╚══════════════════════════════════════════════════════╝
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'
+const SUPABASE_KEY = 'YOUR_ANON_PUBLIC_KEY'
+// ── 위 두 값은 Supabase > Settings > API 에서 확인 ──────
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// ── 상태 ────────────────────────────────────────────────
+const S = {
+  user: null, profile: null, view: 'dashboard', selUnit: null,
+  reportTab: 'weekly', adminTab: 'units', units: [], contacts: [],
+  events: [], docs: [], users: [], selDate: null,
+  calY: new Date().getFullYear(), calM: new Date().getMonth(),
+  uploading: false,
+}
+
+// ── 유틸 ────────────────────────────────────────────────
+const root = () => document.getElementById('root')
+const el = (tag, attrs={}, ...kids) => {
+  const e = document.createElement(tag)
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k==='cls') e.className=v
+    else if (k==='html') e.innerHTML=v
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2),v)
+    else if (k==='style'&&typeof v==='object') Object.assign(e.style,v)
+    else e.setAttribute(k,v)
+  }
+  for (const c of kids.flat()) {
+    if (c==null) continue
+    e.append(typeof c==='string'?document.createTextNode(c):c)
+  }
+  return e
+}
+const ini = n => { if(!n)return'?'; const p=n.trim().split(/\s+/); return(p.length>=2?(p[0][0]+p[1][0]):n.slice(0,2)).toUpperCase() }
+const fmtB = b => b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'
+const fmtD = s => { if(!s)return''; const[y,m,d]=String(s).split('-'); return `${y}.${+m}.${+d}` }
+const ds = (y,m,d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+const today = () => { const t=new Date(); return ds(t.getFullYear(),t.getMonth(),t.getDate()) }
+let toastT = null
+const toast = (msg, type='ok') => {
+  let t = document.querySelector('.toast')
+  if(!t){t=el('div');document.body.append(t)}
+  t.className=`toast ${type}`; t.textContent=msg
+  if(toastT)clearTimeout(toastT)
+  toastT=setTimeout(()=>t?.remove(),3200)
+}
+const isAdmin = () => S.profile?.role==='admin'
+const canView = uid => isAdmin() || S.profile?.unit_ids?.includes(uid)
+const canUp   = uid => isAdmin() || (S.profile?.role==='uploader' && S.profile?.unit_ids?.includes(uid))
+const getUnit = id => S.units.find(u=>u.id===id)
+
+// ── Supabase API ─────────────────────────────────────────
+const DB = {
+  async load() {
+    const [u,c,e,d] = await Promise.all([
+      sb.from('units').select('*').order('sort_order'),
+      sb.from('contacts').select('*'),
+      sb.from('events').select('*').order('date').order('time'),
+      sb.from('documents').select('*').order('uploaded_at',{ascending:false}),
+    ])
+    S.units    = u.data||[]
+    S.contacts = c.data||[]
+    S.events   = e.data||[]
+    S.docs     = d.data||[]
+    if(isAdmin()){
+      const {data} = await sb.from('profiles').select('*')
+      S.users = data||[]
+    }
+  },
+  async uploadFile(file, unitId, reportType, eventId) {
+    const ext  = file.name.split('.').pop().toLowerCase()
+    const path = `${unitId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`
+    const {error:ue} = await sb.storage.from('documents').upload(path, file)
+    if(ue) throw new Error('파일 업로드 실패: ' + ue.message)
+    const ftype = ext==='pdf'?'pdf':'word'
+    const {data,error:de} = await sb.from('documents').insert({
+      unit_id: unitId, event_id: eventId||null, report_type: reportType,
+      name: file.name, file_type: ftype, file_path: path,
+      size: file.size, uploaded_by: S.user.id, uploaded_by_name: S.profile?.name||'',
+    }).select().single()
+    if(de) throw new Error('메타데이터 저장 실패: ' + de.message)
+    return data
+  },
+  async getFileUrl(path) {
+    const {data} = await sb.storage.from('documents').createSignedUrl(path, 3600)
+    return data?.signedUrl||null
+  },
+  async deleteDoc(doc) {
+    await sb.storage.from('documents').remove([doc.file_path])
+    await sb.from('documents').delete().eq('id', doc.id)
+  },
+}
+
+// ── 렌더 ────────────────────────────────────────────────
+function render() {
+  root().innerHTML=''
+  if(!S.user) { root().append(renderLogin()); return }
+  root().append(renderApp())
+}
+function refreshMain() {
+  const old=document.getElementById('main-area')
+  if(old) old.replaceWith(renderMainArea())
+}
+function refreshAll() { render() }
+
+// ── 로그인 ──────────────────────────────────────────────
+function renderLogin() {
+  const bg = el('div',{cls:'login-bg'})
+  const box = el('div',{cls:'login-box'})
+  bg.append(box)
+  box.append(
+    el('div',{cls:'login-ico'},'📊'),
+    el('div',{style:{textAlign:'center',marginBottom:'24px'}},
+      el('div',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'4px'}},'사업부 통합 보고 대시보드'),
+      el('div',{style:{fontSize:'12px',color:'#6b7280'}},'기획조정팀')
+    )
+  )
+  const errDiv = el('div',{style:{display:'none'}})
+  const emailIn = el('input',{cls:'input',type:'email',placeholder:'이메일 주소',style:{marginTop:'4px'}})
+  const passIn  = el('input',{cls:'input',type:'password',placeholder:'비밀번호',style:{marginTop:'4px'}})
+  const loginBtn= el('button',{cls:'btn btn-p',style:{width:'100%',justifyContent:'center',padding:'10px',fontSize:'14px',marginTop:'4px'}},'로그인')
+
+  box.append(
+    el('div',{cls:'fg'},el('label',{cls:'lbl'},'이메일 주소'),emailIn),
+    el('div',{cls:'fg'},el('label',{cls:'lbl'},'비밀번호'),passIn),
+    el('div',{cls:'mt8'},errDiv),
+    loginBtn
+  )
+
+  async function doLogin() {
+    const email=emailIn.value.trim(), pass=passIn.value
+    if(!email||!pass){errDiv.textContent='이메일과 비밀번호를 입력하세요.';errDiv.className='flash err';errDiv.style.display='block';return}
+    loginBtn.disabled=true; loginBtn.textContent='로그인 중...'
+    const {data,error} = await sb.auth.signInWithPassword({email,password:pass})
+    if(error){errDiv.textContent=error.message==='Invalid login credentials'?'이메일 또는 비밀번호가 올바르지 않습니다.':error.message;errDiv.className='flash err';errDiv.style.display='block';loginBtn.disabled=false;loginBtn.textContent='로그인';return}
+    S.user=data.user
+    const {data:prof} = await sb.from('profiles').select('*').eq('id',S.user.id).single()
+    S.profile=prof
+    await DB.load()
+    render()
+  }
+  loginBtn.onclick=doLogin
+  passIn.onkeydown=e=>{if(e.key==='Enter')doLogin()}
+  return bg
+}
+
+// ── 앱 레이아웃 ─────────────────────────────────────────
+function renderApp() {
+  const layout=el('div',{style:{display:'flex',height:'100vh',overflow:'hidden'}})
+  layout.append(renderSidebar(),renderMainArea())
+  return layout
+}
+function renderMainArea() {
+  const main=el('div',{id:'main-area',cls:'main'})
+  const page=el('div',{cls:'page'})
+  main.append(page)
+  if(S.view==='dashboard') page.append(renderDashboard())
+  else if(S.view==='unit'&&S.selUnit) page.append(renderUnit())
+  else if(S.view==='calendar') page.append(renderCalendar())
+  else if(S.view==='contacts') page.append(renderContacts())
+  else if(S.view==='admin'&&isAdmin()) page.append(renderAdmin())
+  return main
+}
+
+// ── 사이드바 ────────────────────────────────────────────
+function renderSidebar() {
+  const sb_el=el('div',{cls:'sidebar'})
+  sb_el.append(el('div',{cls:'sb-hdr'},el('h1',{},'통합 보고 대시보드'),el('p',{},'기획조정팀')))
+  const nav=el('div',{cls:'sb-nav'})
+  sb_el.append(nav)
+  const navItems=[
+    {id:'dashboard',label:'대시보드',icon:'🏠'},
+    {id:'calendar', label:'회의 일정',icon:'📅'},
+    {id:'contacts', label:'담당자 연락처',icon:'👥'},
+  ]
+  if(isAdmin()) navItems.push({id:'admin',label:'관리자 설정',icon:'⚙'})
+  for(const item of navItems){
+    const btn=el('button',{cls:`nav-a${S.view===item.id?' active':''}`, html:`${item.icon} ${item.label}`})
+    btn.onclick=()=>{S.view=item.id;S.selUnit=null;refreshAll()}
+    nav.append(btn)
+  }
+  nav.append(el('div',{cls:'nav-sep'}),el('div',{cls:'nav-lbl'},'사업부'))
+  for(const unit of S.units.filter(u=>canView(u.id))){
+    const isAct=S.view==='unit'&&S.selUnit?.id===unit.id
+    const btn=el('button',{cls:`nav-a${isAct?' active':''}`,style:{fontSize:'11px'}})
+    btn.append(el('span',{cls:'udot',style:{background:unit.color}}),document.createTextNode(unit.name))
+    btn.onclick=()=>{S.view='unit';S.selUnit=unit;S.reportTab='weekly';refreshAll()}
+    nav.append(btn)
+  }
+  const footer=el('div',{cls:'sb-footer'})
+  footer.append(el('div',{cls:'flex mb8'},
+    el('div',{cls:'avatar'},ini(S.profile?.name)),
+    el('div',{style:{marginLeft:'8px',overflow:'hidden'}},
+      el('div',{style:{fontSize:'12px',fontWeight:'700',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},S.profile?.name||S.user?.email||''),
+      el('div',{style:{fontSize:'10px',color:'#9ca3af'}},S.profile?.role==='admin'?'관리자':S.profile?.role==='uploader'?'업로더':'열람자')
+    )
+  ))
+  const logBtn=el('button',{cls:'btn btn-sm',style:{width:'100%',justifyContent:'center',marginTop:'8px'}},'로그아웃')
+  logBtn.onclick=async()=>{await sb.auth.signOut();S.user=null;S.profile=null;Object.assign(S,{units:[],contacts:[],events:[],docs:[],users:[]});render()}
+  footer.append(logBtn)
+  sb_el.append(footer)
+  return sb_el
+}
+
+// ── 대시보드 ────────────────────────────────────────────
+function renderDashboard() {
+  const frag=document.createDocumentFragment()
+  const td=today()
+  const visUnits=S.units.filter(u=>canView(u.id))
+  const allDocs=S.docs.filter(d=>canView(d.unit_id))
+  frag.append(el('div',{cls:'ph'},
+    el('div',{},el('h2',{},'사업부 통합 대시보드'),el('div',{cls:'ts tmu mt8'},`${td.replace(/-/g,'.')} 기준`))
+  ))
+  const stats=el('div',{cls:'g4 mb16'})
+  for(const [lbl,val] of [['접근 가능 사업부',visUnits.length],['전체 보고 문서',allDocs.length],['주요사항 심층보고',allDocs.filter(d=>d.report_type==='weekly').length],['월간보고',allDocs.filter(d=>d.report_type==='monthly').length]]){
+    stats.append(el('div',{cls:'stat'},el('div',{cls:'sl'},lbl),el('div',{cls:'sv'},String(val))))
+  }
+  frag.append(stats)
+
+  const sortedEvs=[...S.events].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
+  const upcoming=sortedEvs.filter(e=>e.date>=td).slice(0,8)
+  const lw=sortedEvs.filter(e=>e.type==='weekly'&&e.date<=td).at(-1)||null
+  const lm=sortedEvs.filter(e=>e.type==='monthly'&&e.date<=td).at(-1)||null
+
+  // 왼쪽: 예정 일정
+  function makeUpcomingItem(ev){
+    const unit=getUnit(ev.unit_id)
+    const color=unit?.color||'#9ca3af'
+    const evDocs=allDocs.filter(d=>d.event_id===ev.id)
+    const badge=ev.type==='monthly'?el('span',{cls:'bm'},'월간'):el('span',{cls:'bw'},'주간')
+    const cntBadge=evDocs.length?el('span',{style:{fontSize:'10px',padding:'1px 6px',borderRadius:'10px',background:'#dcfce7',color:'#16a34a',fontWeight:'700',marginLeft:'6px'}},`자료 ${evDocs.length}건`):null
+    const wrap=el('div',{style:{background:'#fff',border:'1px solid #e5e7eb',borderLeft:`4px solid ${color}`,borderRadius:'10px',overflow:'hidden',marginBottom:'10px'}})
+    const hdr=el('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'11px 14px',flexWrap:'wrap'}})
+    const titleWrap=el('div',{style:{flex:'1',minWidth:'0'}})
+    const titleRow=el('div',{cls:'flex'},el('span',{style:{fontSize:'13px',fontWeight:'700'}},ev.title),badge)
+    if(cntBadge)titleRow.append(cntBadge)
+    titleWrap.append(titleRow,el('div',{style:{fontSize:'11px',color:'#6b7280',marginTop:'3px'}},`📅 ${fmtD(ev.date)} ${ev.time||''}${ev.end_time?' ~ '+ev.end_time:''}${ev.location?' | '+ev.location:''}`))
+    hdr.append(titleWrap)
+    wrap.append(hdr)
+    // 문서 목록
+    if(evDocs.length===0){
+      wrap.append(el('div',{style:{padding:'6px 14px 10px',fontSize:'11px',color:'#d1d5db'}},'첨부 자료 없음'))
+    } else {
+      for(const doc of evDocs.slice(0,3)){
+        const row=el('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'5px 14px 5px 26px',borderTop:'1px solid #f3f4f6'}})
+        const iconBg=doc.file_type==='pdf'?'#fee2e2':'#dbeafe', iconFg=doc.file_type==='pdf'?'#dc2626':'#2563eb'
+        row.append(
+          el('div',{style:{width:'26px',height:'26px',borderRadius:'6px',background:iconBg,color:iconFg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:'800',flexShrink:'0'}},doc.file_type==='pdf'?'PDF':'DOC'),
+          el('div',{style:{flex:'1',overflow:'hidden'},cls:'ell'},
+            el('span',{style:{fontSize:'11px',fontWeight:'600',color:'#374151'}},doc.name)
+          )
+        )
+        const openBtn=el('button',{cls:'btn btn-sm',style:{flexShrink:'0',fontSize:'10px',padding:'2px 7px'}},doc.file_type==='pdf'?'미리보기':'다운로드')
+        openBtn.onclick=async()=>{
+          const url=await DB.getFileUrl(doc.file_path)
+          if(url)window.open(url,'_blank')
+          else toast('파일 URL 생성 실패','err')
+        }
+        row.append(openBtn)
+        wrap.append(row)
+      }
+    }
+    return wrap
+  }
+
+  // 오른쪽: 과거 보고 현황
+  function makePastSection(ev, labelColor, labelBg, icon, label){
+    if(!ev) return el('div',{cls:'card mb12',style:{padding:'12px'}},el('div',{style:{fontSize:'12px',fontWeight:'700',color:labelColor,marginBottom:'6px'}},`${icon} ${label}`),el('div',{cls:'ts tmu'},'완료된 일정이 없습니다'))
+    const rows=el('div',{style:{padding:'6px 10px'}})
+    for(const unit of visUnits){
+      const tagged=allDocs.filter(d=>d.event_id===ev.id&&d.unit_id===unit.id)
+      const recent=[...allDocs.filter(d=>d.unit_id===unit.id&&d.report_type===ev.type&&!d.event_id)].sort((a,b)=>b.uploaded_at.localeCompare(a.uploaded_at))
+      const show=tagged.length?tagged:recent.slice(0,1)
+      const row=el('div',{style:{display:'flex',alignItems:'center',gap:'7px',padding:'5px 0',borderBottom:'1px solid #f9fafb'}})
+      row.append(el('span',{style:{width:'7px',height:'7px',borderRadius:'50%',background:unit.color,flexShrink:'0',display:'inline-block'}}))
+      if(show.length){
+        const doc=show[0]
+        const info=el('div',{style:{flex:'1',overflow:'hidden'}})
+        info.append(el('div',{style:{fontSize:'11px',fontWeight:'700',color:'#374151'}},unit.name),el('div',{cls:'txs tmu ell'},doc.name))
+        const openBtn=el('button',{cls:'btn btn-sm',style:{fontSize:'10px',padding:'2px 6px',flexShrink:'0'}},'열기')
+        openBtn.onclick=async()=>{const url=await DB.getFileUrl(doc.file_path);if(url)window.open(url,'_blank');else toast('URL 생성 실패','err')}
+        row.append(info,openBtn)
+      } else {
+        row.append(el('div',{style:{flex:'1'}},el('div',{style:{fontSize:'11px',fontWeight:'700',color:'#374151'}},unit.name),el('div',{style:{fontSize:'10px',color:'#d1d5db'}},'미제출')))
+        const upBtn=el('button',{cls:'btn btn-sm',style:{fontSize:'10px',padding:'2px 6px',flexShrink:'0',color:'#9ca3af'}},'업로드')
+        upBtn.onclick=()=>{S.view='unit';S.selUnit=unit;S.reportTab=ev.type;refreshAll()}
+        row.append(upBtn)
+      }
+      rows.append(row)
+    }
+    const sec=el('div',{cls:'card mb12',style:{padding:'0',overflow:'hidden'}})
+    const secHdr=el('div',{style:{padding:'10px 14px',background:labelBg,borderBottom:'1px solid #e5e7eb'}})
+    secHdr.append(el('div',{style:{fontSize:'12px',fontWeight:'700',color:labelColor,marginBottom:'3px'}},`${icon} ${label}`),el('div',{style:{fontSize:'11px',fontWeight:'600',color:'#1a1a1a'}},ev.title),el('div',{style:{fontSize:'10px',color:'#6b7280',marginTop:'2px'}},`${fmtD(ev.date)} ${ev.time||''}${ev.location?' · '+ev.location:''}`))
+    sec.append(secHdr,rows)
+    return sec
+  }
+
+  const grid=el('div',{style:{display:'grid',gridTemplateColumns:'3fr 2fr',gap:'18px',alignItems:'start'}})
+  const left=el('div',{})
+  left.append(el('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}},
+    el('div',{style:{fontSize:'15px',fontWeight:'800'}},'📅 예정 일정 및 회의 자료'),
+    el('button',{cls:'btn btn-sm'},  '전체 일정 →').tap(b=>{b.onclick=()=>{S.view='calendar';refreshAll()}})
+  ))
+  if(upcoming.length===0) left.append(el('div',{cls:'empty'},'예정된 일정이 없습니다'))
+  else for(const ev of upcoming) left.append(makeUpcomingItem(ev))
+
+  const right=el('div',{})
+  right.append(el('div',{style:{fontSize:'15px',fontWeight:'800',marginBottom:'14px'}},'📂 최근 보고 현황'))
+  right.append(makePastSection(lw,'#2563eb','#eff6ff','📋','주요사항 심층보고 현황'))
+  right.append(makePastSection(lm,'#d97706','#fffbeb','📊','월간보고 현황'))
+  grid.append(left,right)
+  frag.append(grid)
+  return frag
+}
+
+// ── 사업부 뷰 ───────────────────────────────────────────
+function renderUnit(){
+  const unit=S.selUnit
+  const ct=S.contacts.find(c=>c.unit_id===unit.id)
+  const docs=[...S.docs.filter(d=>d.unit_id===unit.id&&d.report_type===S.reportTab)].sort((a,b)=>b.uploaded_at.localeCompare(a.uploaded_at))
+  const allEvs=S.events.filter(e=>(e.unit_id===unit.id||e.unit_id==='all')&&e.type===S.reportTab).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time))
+  const frag=document.createDocumentFragment()
+
+  // 헤더
+  const ph=el('div',{cls:'ph'})
+  const titleBlock=el('div',{cls:'flex',style:{gap:'12px'}})
+  titleBlock.append(el('span',{cls:'udot',style:{background:unit.color,width:'12px',height:'12px'}}),
+    el('div',{},el('h2',{},unit.name),ct?el('div',{cls:'ts tmu mt8'},`담당: ${ct.name} (${ct.title}) · ${ct.mobile}`):el('span',{})))
+  ph.append(titleBlock)
+  if(ct){
+    const btns=el('div',{cls:'flex'})
+    if(ct.email){const a=el('a',{cls:'btn btn-p btn-sm',href:`mailto:${ct.email}`},'✉ 이메일');btns.append(a)}
+    if(ct.mobile){const a=el('a',{cls:'btn btn-sm',href:`tel:${ct.mobile}`},'📞 전화');btns.append(a)}
+    ph.append(btns)
+  }
+  frag.append(ph)
+
+  // 탭
+  const tabs=el('div',{cls:'tabs'})
+  for(const [id,lbl] of [['weekly','주요사항 심층보고 (주간)'],['monthly','월간보고']]){
+    const btn=el('button',{cls:`tab${S.reportTab===id?' active':''}`},lbl)
+    btn.onclick=()=>{S.reportTab=id;refreshMain()}
+    tabs.append(btn)
+  }
+  frag.append(tabs)
+
+  // 업로드
+  if(canUp(unit.id)){
+    const evOpts=el('select',{cls:'input'})
+    evOpts.append(el('option',{value:''},'-- 일정 선택 안 함 --'))
+    for(const ev of allEvs) evOpts.append(el('option',{value:ev.id},`[${fmtD(ev.date)} ${ev.time}] ${ev.title}`))
+    const fileInput=el('input',{type:'file',accept:'.pdf,.doc,.docx',style:{display:'none'}})
+    document.body.append(fileInput)
+    const upBtn=el('button',{cls:'btn btn-p'},`↑ ${S.reportTab==='weekly'?'주요사항 보고서':'월간보고서'} 업로드`)
+    const upCard=el('div',{cls:'card mb16',style:{padding:'14px'}})
+    upCard.append(el('div',{style:{fontSize:'13px',fontWeight:'700',marginBottom:'10px'}},'📎 문서 업로드'))
+    const grid=el('div',{cls:'g2',style:{marginBottom:'10px'}})
+    grid.append(el('div',{},el('label',{cls:'lbl'},'연결 일정 (태그)'),evOpts),el('div',{style:{display:'flex',flexDirection:'column',justifyContent:'flex-end'}},upBtn))
+    upCard.append(grid,el('div',{style:{fontSize:'11px',color:'#9ca3af'}},'PDF, Word(.docx) · 용량 제한 없음 · 파일 선택 시 자동 업로드'))
+    frag.append(upCard)
+    let upBar=null
+    upBtn.onclick=()=>{if(S.uploading)return;fileInput.click()}
+    fileInput.onchange=async e=>{
+      const file=e.target.files?.[0]; if(!file)return; fileInput.value=''
+      const ext=file.name.split('.').pop().toLowerCase()
+      if(!['pdf','doc','docx'].includes(ext)){toast('PDF 또는 Word 파일만 업로드 가능합니다.','err');return}
+      S.uploading=true; upBtn.disabled=true; upBtn.textContent='업로드 중...'
+      upBar=el('div',{cls:'up-bar'},el('div',{cls:'up-fill'})); upCard.append(upBar)
+      try{
+        const eventId=evOpts.value||null
+        const doc=await DB.uploadFile(file,unit.id,S.reportTab,eventId)
+        S.docs.unshift(doc); toast(`${file.name} 업로드 완료`)
+      }catch(e){toast(e.message,'err')}
+      finally{S.uploading=false;upBtn.disabled=false;upBtn.textContent=`↑ ${S.reportTab==='weekly'?'주요사항 보고서':'월간보고서'} 업로드`;upBar?.remove();fileInput.remove();refreshMain()}
+    }
+  }
+
+  // 문서 목록
+  if(docs.length===0){frag.append(el('div',{cls:'empty'},'업로드된 문서가 없습니다'))}
+  else{
+    const list=el('div',{style:{display:'flex',flexDirection:'column',gap:'7px'}})
+    for(const doc of docs){
+      const row=el('div',{cls:'row',style:{flexWrap:'wrap',gap:'8px'}})
+      const evLink=doc.event_id?S.events.find(e=>e.id===doc.event_id):null
+      const info=el('div',{style:{flex:'1',overflow:'hidden'}})
+      const nameRow=el('div',{})
+      nameRow.append(el('span',{cls:'fw7 ts ell'},doc.name))
+      if(evLink) nameRow.append(el('span',{style:{fontSize:'9px',padding:'1px 6px',borderRadius:'10px',background:'#dcfce7',color:'#16a34a',fontWeight:'700',marginLeft:'5px'}},'📅 '+fmtD(evLink.date)))
+      info.append(nameRow,el('div',{cls:'txs tmu mt8'},`${fmtD(doc.uploaded_at?.slice(0,10))} · ${doc.uploaded_by_name} · ${fmtB(doc.size||0)}`))
+      const ftype=doc.file_type
+      const btns=el('div',{cls:'flex',style:{gap:'6px',flexShrink:'0'}})
+      const viewBtn=el('button',{cls:'btn btn-sm'},ftype==='pdf'?'미리보기':'다운로드')
+      viewBtn.onclick=async()=>{const url=await DB.getFileUrl(doc.file_path);if(url)window.open(url,'_blank');else toast('URL 생성 실패','err')}
+      const dlBtn=el('button',{cls:'btn btn-sm'},'다운로드')
+      dlBtn.onclick=async()=>{
+        const url=await DB.getFileUrl(doc.file_path)
+        if(url){const a=document.createElement('a');a.href=url;a.download=doc.name;a.click()}
+        else toast('URL 생성 실패','err')
+      }
+      btns.append(viewBtn, dlBtn)
+      if(canUp(unit.id)){
+        const delBtn=el('button',{cls:'btn btn-d btn-sm'},'삭제')
+        delBtn.onclick=async()=>{if(!confirm('삭제하시겠습니까?'))return;try{await DB.deleteDoc(doc);S.docs=S.docs.filter(d=>d.id!==doc.id);toast('삭제되었습니다.');refreshMain()}catch(e){toast(e.message,'err')}}
+        btns.append(delBtn)
+      }
+      row.append(el('div',{cls:`ficon ${ftype}`},ftype==='pdf'?'PDF':'DOC'),info,btns)
+      list.append(row)
+    }
+    frag.append(list)
+  }
+  return frag
+}
+
+// ── 달력 ────────────────────────────────────────────────
+function renderCalendar(){
+  const y=S.calY, m=S.calM, td=today()
+  const frag=document.createDocumentFragment()
+  const ph=el('div',{cls:'ph'})
+  ph.append(el('h2',{},'회의 일정'))
+  const nav=el('div',{cls:'flex'})
+  const prev=el('button',{cls:'btn btn-sm'},'‹')
+  prev.onclick=()=>{if(S.calM===0){S.calY--;S.calM=11}else S.calM--;refreshMain()}
+  const next=el('button',{cls:'btn btn-sm'},'›')
+  next.onclick=()=>{if(S.calM===11){S.calY++;S.calM=0}else S.calM++;refreshMain()}
+  const mlbl=el('span',{style:{fontWeight:'700',minWidth:'80px',textAlign:'center'}},`${y}년 ${m+1}월`)
+  nav.append(prev,mlbl,next)
+  if(isAdmin()){
+    const addBtn=el('button',{cls:'btn btn-p btn-sm'},'+ 일정 추가')
+    addBtn.onclick=()=>openModal({type:'addEvent',data:{unit_id:'all',title:'',date:td,time:'10:00',end_time:'11:00',type:'weekly',location:''}})
+    nav.append(addBtn)
+  }
+  ph.append(nav)
+  frag.append(ph)
+
+  const first=new Date(y,m,1).getDay(), total=new Date(y,m+1,0).getDate()
+  const cells=[...Array(first).fill(null),...Array.from({length:total},(_,i)=>i+1)]
+  while(cells.length%7) cells.push(null)
+  const evMap={}
+  for(const ev of S.events){evMap[ev.date]=(evMap[ev.date]||[]).concat(ev)}
+
+  const grid=el('div',{cls:'g2'})
+  const leftCol=el('div',{})
+  const calEl=el('div',{cls:'cal'})
+  const calHdr=el('div',{cls:'cal-hdr'})
+  ;['일','월','화','수','목','금','토'].forEach((d,i)=>calHdr.append(el('div',{cls:`cdn${i===0?' s':i===6?' sa':''}`},d)))
+  calEl.append(calHdr)
+  for(let i=0;i<cells.length;i+=7){
+    const weekEl=el('div',{cls:'cal-row'})
+    for(let di=0;di<7;di++){
+      const day=cells[i+di]
+      const dstr=day?ds(y,m,day):null
+      const devs=dstr?evMap[dstr]||[]:[]
+      const isToday=dstr===td, isSel=dstr===S.selDate
+      let cls='cc'+(day?'':' empty')+(isToday?' today':'')+(isSel?' sel':'')+(di===0?' s':di===6?' sa':'')
+      const cell=el('div',{cls})
+      if(day){
+        const dn=el('div',{cls:'dn'},String(day))
+        const dots=el('div',{cls:'evd'})
+        devs.slice(0,6).forEach(ev=>{const u=getUnit(ev.unit_id);dots.append(el('span',{cls:'evdot',style:{background:u?.color||'#9ca3af'},title:ev.title}))})
+        cell.append(dn,dots)
+        cell.onclick=()=>{S.selDate=dstr;refreshMain()}
+      }
+      weekEl.append(cell)
+    }
+    calEl.append(weekEl)
+  }
+  leftCol.append(calEl)
+  const legend=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'10px'}})
+  S.units.slice(0,6).forEach(u=>legend.append(el('div',{style:{display:'flex',alignItems:'center',gap:'4px',fontSize:'10px',color:'#6b7280'}},el('span',{cls:'evdot',style:{background:u.color}}),u.name)))
+  leftCol.append(legend)
+  grid.append(leftCol)
+
+  const rightCol=el('div',{})
+  if(S.selDate){
+    const selEvs=(evMap[S.selDate]||[]).sort((a,b)=>a.time.localeCompare(b.time))
+    rightCol.append(el('div',{style:{fontSize:'14px',fontWeight:'700',marginBottom:'10px'}},fmtD(S.selDate)+' 일정'))
+    if(selEvs.length===0) rightCol.append(el('p',{cls:'ts tmu'},'이 날 일정이 없습니다'))
+    else for(const ev of selEvs){
+      const unit=getUnit(ev.unit_id)
+      const color=unit?.color||'#9ca3af'
+      const badge=ev.type==='monthly'?el('span',{cls:'bm'},'월간'):el('span',{cls:'bw'},'주간')
+      const box=el('div',{cls:'card mb8',style:{borderLeft:`3px solid ${color}`,padding:'12px'}})
+      box.append(el('div',{cls:'flex mb8'},el('span',{cls:'fw7 ts f1 ell'},ev.title),badge),
+        el('div',{cls:'txs tmu'},`${ev.time||''}${ev.end_time?' ~ '+ev.end_time:''}${ev.location?' | '+ev.location:''}`))
+      if(isAdmin()){
+        const delBtn=el('button',{cls:'btn btn-d btn-sm',style:{marginTop:'8px'}},'일정 삭제')
+        delBtn.onclick=async()=>{if(!confirm('삭제?'))return;await sb.from('events').delete().eq('id',ev.id);S.events=S.events.filter(e=>e.id!==ev.id);toast('삭제됨');refreshMain()}
+        box.append(delBtn)
+      }
+      rightCol.append(box)
+    }
+    rightCol.append(el('div',{style:{marginTop:'16px'}}))
+  }
+  const mstr=`${y}-${String(m+1).padStart(2,'0')}`
+  const monthEvs=S.events.filter(e=>String(e.date).startsWith(mstr)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
+  rightCol.append(el('div',{style:{fontSize:'14px',fontWeight:'700',marginBottom:'10px'}},'이번 달 전체 일정'))
+  if(monthEvs.length===0) rightCol.append(el('p',{cls:'ts tmu'},'일정 없음'))
+  else{
+    const mlist=el('div',{style:{display:'flex',flexDirection:'column',gap:'5px'}})
+    for(const ev of monthEvs){
+      const unit=getUnit(ev.unit_id)
+      const color=unit?.color||'#9ca3af'
+      const row=el('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'7px 10px',background:'#fff',border:'1px solid #e5e7eb',borderRadius:'8px',cursor:'pointer'}})
+      row.append(el('span',{cls:'evdot',style:{background:color,flexShrink:'0'}}),el('span',{cls:'txs tmu',style:{flexShrink:'0',minWidth:'82px'}},`${String(ev.date).slice(5)} ${ev.time||''}`),el('span',{cls:'ts fw7 f1 ell'},ev.title),ev.type==='monthly'?el('span',{cls:'bm'},'월간'):el('span',{cls:'bw'},'주간'))
+      row.onclick=()=>{S.selDate=ev.date;refreshMain()}
+      mlist.append(row)
+    }
+    rightCol.append(mlist)
+  }
+  grid.append(rightCol)
+  frag.append(grid)
+  return frag
+}
+
+// ── 담당자 ──────────────────────────────────────────────
+function renderContacts(){
+  const frag=document.createDocumentFragment()
+  const ph=el('div',{cls:'ph'})
+  ph.append(el('h2',{},'담당자 연락처'))
+  if(isAdmin()){const addBtn=el('button',{cls:'btn btn-p btn-sm'},'+ 담당자 추가');addBtn.onclick=()=>openModal({type:'addContact',data:{unit_id:S.units[0]?.id||'',name:'',title:'',email:'',phone:'',mobile:''}});ph.append(addBtn)}
+  frag.append(ph)
+  const grid=el('div',{cls:'ctg'})
+  const visUnits=S.units.filter(u=>canView(u.id))
+  for(const unit of visUnits){
+    for(const ct of S.contacts.filter(c=>c.unit_id===unit.id)){
+      const card=el('div',{cls:'ctc',style:{borderTopColor:unit.color}})
+      card.append(el('div',{cls:'flex mb8'},
+        el('div',{cls:'avatar',style:{background:unit.color+'22',color:unit.color}},ini(ct.name)),
+        el('div',{style:{marginLeft:'8px',overflow:'hidden'}},el('div',{cls:'fw7 ts ell'},ct.name),el('div',{cls:'txs tmu'},ct.title||''))
+      ))
+      card.append(el('span',{style:{fontSize:'10px',padding:'2px 8px',borderRadius:'20px',background:unit.color+'22',color:unit.color,fontWeight:'700'}},unit.name))
+      const links=el('div',{style:{borderTop:'1px solid #f3f4f6',paddingTop:'9px',marginTop:'9px',display:'flex',flexDirection:'column',gap:'4px'}})
+      if(ct.email) links.append(Object.assign(el('a',{cls:'ctl',href:`mailto:${ct.email}`,style:{color:'#2563eb'}}),'✉ '+ct.email))
+      if(ct.phone) links.append(Object.assign(el('a',{cls:'ctl',href:`tel:${ct.phone}`}),'☎ '+ct.phone))
+      if(ct.mobile&&ct.mobile!==ct.phone) links.append(Object.assign(el('a',{cls:'ctl',href:`tel:${ct.mobile}`}),'📱 '+ct.mobile))
+      card.append(links)
+      if(isAdmin()){
+        const br=el('div',{style:{display:'flex',gap:'6px',marginTop:'10px',paddingTop:'9px',borderTop:'1px solid #f3f4f6'}})
+        const editBtn=el('button',{cls:'btn btn-sm',style:{flex:'1'}},'수정')
+        editBtn.onclick=()=>openModal({type:'editContact',data:{...ct}})
+        const delBtn=el('button',{cls:'btn btn-d btn-sm',style:{flex:'1'}},'삭제')
+        delBtn.onclick=async()=>{if(!confirm('삭제?'))return;await sb.from('contacts').delete().eq('id',ct.id);S.contacts=S.contacts.filter(c=>c.id!==ct.id);toast('삭제됨');refreshMain()}
+        br.append(editBtn,delBtn); card.append(br)
+      }
+      grid.append(card)
+    }
+  }
+  if(!grid.children.length) grid.append(el('div',{cls:'empty'},'등록된 담당자가 없습니다'))
+  frag.append(grid)
+  return frag
+}
+
+// ── 관리자 ──────────────────────────────────────────────
+function renderAdmin(){
+  const frag=document.createDocumentFragment()
+  frag.append(el('div',{cls:'ph'},el('h2',{},'관리자 설정')))
+  const tabs=el('div',{cls:'tabs'})
+  for(const [id,lbl] of [['units','사업부 관리'],['users','사용자 관리'],['permissions','권한 현황']]){
+    const btn=el('button',{cls:`tab${S.adminTab===id?' active':''}`},lbl)
+    btn.onclick=()=>{S.adminTab=id;refreshMain()}
+    tabs.append(btn)
+  }
+  frag.append(tabs)
+  const COLORS=['#2563eb','#059669','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#374151','#b45309','#0f766e']
+
+  if(S.adminTab==='units'){
+    const addBtn=el('button',{cls:'btn btn-p btn-sm mb12'},'+ 사업부 추가')
+    addBtn.onclick=()=>openModal({type:'addUnit',data:{id:'',name:'',color:'#2563eb',sort_order:S.units.length+1}})
+    frag.append(addBtn)
+    const list=el('div',{style:{display:'flex',flexDirection:'column',gap:'7px'}})
+    for(const unit of S.units){
+      const row=el('div',{cls:'row'})
+      row.append(el('span',{cls:'udot',style:{background:unit.color,width:'10px',height:'10px'}}),el('span',{style:{flex:'1',fontWeight:'700',fontSize:'13px'}},unit.name),el('span',{cls:'txs txmu'},`문서 ${S.docs.filter(d=>d.unit_id===unit.id).length}개`))
+      const editBtn=el('button',{cls:'btn btn-sm'},'수정');editBtn.onclick=()=>openModal({type:'editUnit',data:{...unit}})
+      const delBtn=el('button',{cls:'btn btn-d btn-sm'},'삭제');delBtn.onclick=async()=>{if(!confirm('삭제?'))return;await sb.from('units').delete().eq('id',unit.id);S.units=S.units.filter(u=>u.id!==unit.id);toast('삭제됨');refreshAll()}
+      row.append(editBtn,delBtn); list.append(row)
+    }
+    frag.append(list)
+  }
+
+  if(S.adminTab==='users'){
+    const addBtn=el('button',{cls:'btn btn-p btn-sm mb12'},'+ 사용자 초대')
+    addBtn.onclick=()=>openModal({type:'inviteUser',data:{email:'',name:'',role:'viewer',unit_ids:[]}})
+    const note=el('div',{cls:'flash ok mb12',style:{fontSize:'12px'}},'사용자를 초대하면 이메일로 초대장이 발송됩니다. 수신자가 링크를 클릭하면 비밀번호 설정 후 로그인할 수 있습니다.')
+    frag.append(note,addBtn)
+    const list=el('div',{style:{display:'flex',flexDirection:'column',gap:'7px'}})
+    for(const u of S.users){
+      const row=el('div',{cls:'row'})
+      row.append(el('div',{cls:'avatar'},ini(u.name||u.id)),el('div',{style:{flex:'1'}},el('div',{cls:'fw7 ts'},u.name||'(이름없음)'),el('div',{cls:'txs tmu mt8'},`${u.role==='admin'?'관리자':u.role==='uploader'?'업로더':'열람자'} · ${u.unit_ids?.length||0}개 사업부`)))
+      const editBtn=el('button',{cls:'btn btn-sm'},'수정');editBtn.onclick=()=>openModal({type:'editProfile',data:{...u}})
+      row.append(editBtn); list.append(row)
+    }
+    frag.append(list)
+  }
+
+  if(S.adminTab==='permissions'){
+    const wrap=el('div',{style:{overflowX:'auto'}})
+    const table=el('table',{cls:'pt'})
+    const hdr=el('tr')
+    hdr.append(el('th',{},'사용자'),el('th',{},'역할'))
+    for(const u of S.units) hdr.append(el('th',{style:{textAlign:'center',fontSize:'10px',whiteSpace:'nowrap'}},u.name))
+    table.append(el('thead',{},hdr))
+    const tbody=el('tbody')
+    for(const u of S.users){
+      const tr=el('tr')
+      tr.append(el('td',{style:{fontWeight:'700'}},u.name||''),el('td',{},u.role==='admin'?'관리자':u.role==='uploader'?'업로더':'열람자'))
+      for(const unit of S.units){
+        const has=u.role==='admin'||u.unit_ids?.includes(unit.id)
+        tr.append(el('td',{style:{textAlign:'center'}},el('span',{cls:has?'yes':'no'},has?'✓':'–')))
+      }
+      tbody.append(tr)
+    }
+    table.append(tbody); wrap.append(table); frag.append(wrap)
+  }
+  return frag
+}
+
+// ── 모달 ────────────────────────────────────────────────
+function openModal(config){
+  const overlay=el('div',{cls:'overlay'})
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()}
+  const modal=el('div',{cls:'modal'})
+  const TITLES={addUnit:'사업부 추가',editUnit:'사업부 수정',inviteUser:'사용자 초대',editProfile:'사용자 수정',addContact:'담당자 추가',editContact:'담당자 수정',addEvent:'일정 추가'}
+  const COLORS=['#2563eb','#059669','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#374151','#b45309','#0f766e','#c2410c','#9333ea']
+  const closeBtn=el('button',{cls:'',style:{background:'transparent',border:'none',fontSize:'22px',color:'#9ca3af',cursor:'pointer'}},'×')
+  closeBtn.onclick=()=>overlay.remove()
+  modal.append(el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px'}},el('div',{style:{fontSize:'15px',fontWeight:'700'}},TITLES[config.type]),closeBtn))
+  const data={...config.data}
+  const body=el('div',{})
+  modal.append(body)
+
+  const inp=(key,lbl,type='text',ph='')=>{
+    const grp=el('div',{cls:'fg'})
+    const input=el('input',{cls:'input',type,placeholder:ph,value:data[key]||''})
+    input.oninput=()=>{data[key]=input.value}
+    grp.append(el('label',{cls:'lbl'},lbl),el('div',{style:{marginTop:'4px'}},input))
+    return grp
+  }
+  const sel=(key,lbl,opts)=>{
+    const grp=el('div',{cls:'fg'})
+    const select=el('select',{cls:'input'})
+    for(const [v,t] of opts){const opt=el('option',{value:v},t);if(data[key]===v)opt.selected=true;select.append(opt)}
+    select.onchange=()=>{data[key]=select.value;rebuildBody()}
+    grp.append(el('label',{cls:'lbl'},lbl),el('div',{style:{marginTop:'4px'}},select))
+    return grp
+  }
+
+  function rebuildBody(){
+    body.innerHTML=''
+    const t=config.type
+    if(t==='addUnit'||t==='editUnit'){
+      body.append(inp('id','사업부 ID (영문, 변경불가) *','text','예: energy_us'))
+      if(t==='editUnit'){
+        const idInput=body.querySelector('input')
+        if(idInput){idInput.value=data.id;idInput.disabled=true}
+      }
+      body.append(inp('name','사업부명 *'))
+      const cgrp=el('div',{cls:'fg'})
+      cgrp.append(el('label',{cls:'lbl'},'색상'))
+      const swatches=el('div',{style:{display:'flex',gap:'6px',marginTop:'6px',flexWrap:'wrap'}})
+      COLORS.forEach(c=>{
+        const sw=el('div',{style:{width:'24px',height:'24px',borderRadius:'50%',background:c,cursor:'pointer',border:data.color===c?'3px solid #1a1a1a':'2px solid transparent'}})
+        sw.onclick=()=>{data.color=c;rebuildBody()}
+        swatches.append(sw)
+      })
+      cgrp.append(swatches); body.append(cgrp)
+    }
+    if(t==='inviteUser'){
+      body.append(inp('email','이메일 *','email','user@company.com'),inp('name','이름 *'))
+      body.append(sel('role','역할',[['viewer','열람자'],['uploader','업로더'],['admin','관리자']]))
+      const ugrp=el('div',{cls:'fg'})
+      ugrp.append(el('label',{cls:'lbl'},'접근 가능 사업부'))
+      const checks=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}})
+      if(!Array.isArray(data.unit_ids))data.unit_ids=[]
+      for(const unit of S.units){
+        const lbl2=el('label',{style:{display:'flex',alignItems:'center',gap:'5px',fontSize:'12px',cursor:'pointer'}})
+        const cb=el('input',{type:'checkbox',style:{width:'auto'}});cb.checked=data.unit_ids.includes(unit.id)
+        cb.onchange=()=>{if(cb.checked)data.unit_ids.push(unit.id);else data.unit_ids=data.unit_ids.filter(x=>x!==unit.id)}
+        lbl2.append(cb,unit.name); checks.append(lbl2)
+      }
+      ugrp.append(checks); body.append(ugrp)
+    }
+    if(t==='editProfile'){
+      body.append(inp('name','이름'))
+      body.append(sel('role','역할',[['viewer','열람자'],['uploader','업로더'],['admin','관리자']]))
+      const ugrp=el('div',{cls:'fg'})
+      ugrp.append(el('label',{cls:'lbl'},'접근 가능 사업부'))
+      const checks=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}})
+      if(!Array.isArray(data.unit_ids))data.unit_ids=[]
+      for(const unit of S.units){
+        const lbl2=el('label',{style:{display:'flex',alignItems:'center',gap:'5px',fontSize:'12px',cursor:'pointer'}})
+        const cb=el('input',{type:'checkbox',style:{width:'auto'}});cb.checked=data.unit_ids.includes(unit.id)
+        cb.onchange=()=>{if(cb.checked)data.unit_ids.push(unit.id);else data.unit_ids=data.unit_ids.filter(x=>x!==unit.id)}
+        lbl2.append(cb,unit.name); checks.append(lbl2)
+      }
+      ugrp.append(checks); body.append(ugrp)
+    }
+    if(t==='addContact'||t==='editContact'){
+      const unitSel=el('div',{cls:'fg'})
+      const uSelect=el('select',{cls:'input'})
+      for(const u of S.units){const opt=el('option',{value:u.id},u.name);if(data.unit_id===u.id)opt.selected=true;uSelect.append(opt)}
+      uSelect.onchange=()=>{data.unit_id=uSelect.value}
+      unitSel.append(el('label',{cls:'lbl'},'소속 사업부'),el('div',{style:{marginTop:'4px'}},uSelect))
+      body.append(unitSel,inp('name','이름 *'),inp('title','직책'))
+      const g=el('div',{cls:'g2'});g.append(inp('email','이메일','email'),inp('phone','사무실 전화'));body.append(g)
+      body.append(inp('mobile','휴대폰'))
+    }
+    if(t==='addEvent'){
+      body.append(inp('title','제목 *'))
+      const g=el('div',{cls:'g2'})
+      g.append(inp('date','날짜','date'),sel('type','보고 유형',[['weekly','주요사항 심층보고'],['monthly','월간보고']]))
+      body.append(g)
+      const g2=el('div',{cls:'g2'});g2.append(inp('time','시작 시간','time'),inp('end_time','종료 시간','time'));body.append(g2)
+      const uSel=el('div',{cls:'fg'})
+      const uSelect=el('select',{cls:'input'})
+      const allOpt=el('option',{value:'all'},'전체');if(data.unit_id==='all')allOpt.selected=true;uSelect.append(allOpt)
+      for(const u of S.units){const opt=el('option',{value:u.id},u.name);if(data.unit_id===u.id)opt.selected=true;uSelect.append(opt)}
+      uSelect.onchange=()=>{data.unit_id=uSelect.value}
+      uSel.append(el('label',{cls:'lbl'},'사업부'),el('div',{style:{marginTop:'4px'}},uSelect));body.append(uSel)
+      body.append(inp('location','장소','text','예: 대회의실, 화상회의'))
+    }
+
+    // 저장 버튼
+    const actions=el('div',{style:{display:'flex',gap:'8px',marginTop:'20px'}})
+    const cancelBtn=el('button',{cls:'btn',style:{flex:'1'}},'취소');cancelBtn.onclick=()=>overlay.remove()
+    const saveBtn=el('button',{cls:'btn btn-p',style:{flex:'2',justifyContent:'center'}},'저장')
+    saveBtn.onclick=async()=>{
+      const t=config.type
+      try{
+        if(t==='addUnit'){
+          if(!data.id?.trim()||!data.name?.trim()){toast('ID와 사업부명을 입력하세요','err');return}
+          const{error}=await sb.from('units').insert({id:data.id.trim(),name:data.name,color:data.color||'#2563eb',sort_order:data.sort_order||99})
+          if(error)throw error
+          S.units.push({...data}); S.units.sort((a,b)=>a.sort_order-b.sort_order)
+        }else if(t==='editUnit'){
+          if(!data.name?.trim()){toast('사업부명을 입력하세요','err');return}
+          const{error}=await sb.from('units').update({name:data.name,color:data.color}).eq('id',data.id)
+          if(error)throw error
+          S.units=S.units.map(u=>u.id===data.id?{...u,...data}:u)
+        }else if(t==='inviteUser'){
+          if(!data.email?.trim()||!data.name?.trim()){toast('이메일과 이름을 입력하세요','err');return}
+          const{data:inv,error}=await sb.auth.admin.inviteUserByEmail(data.email,{data:{name:data.name,role:data.role,unit_ids:data.unit_ids}})
+          if(error){
+            // inviteUserByEmail은 admin 권한 필요 - signUp으로 대체 안내
+            toast('초대 기능은 Supabase Service Key가 필요합니다. README를 참고하세요.','err')
+            return
+          }
+          toast('초대 이메일이 발송되었습니다.')
+        }else if(t==='editProfile'){
+          const{error}=await sb.from('profiles').update({name:data.name,role:data.role,unit_ids:data.unit_ids}).eq('id',data.id)
+          if(error)throw error
+          S.users=S.users.map(u=>u.id===data.id?{...u,...data}:u)
+        }else if(t==='addContact'||t==='editContact'){
+          if(!data.name?.trim()){toast('이름을 입력하세요','err');return}
+          if(t==='addContact'){const{data:r,error}=await sb.from('contacts').insert(data).select().single();if(error)throw error;S.contacts.push(r)}
+          else{const{error}=await sb.from('contacts').update(data).eq('id',data.id);if(error)throw error;S.contacts=S.contacts.map(c=>c.id===data.id?{...c,...data}:c)}
+        }else if(t==='addEvent'){
+          if(!data.title?.trim()){toast('제목을 입력하세요','err');return}
+          const{data:r,error}=await sb.from('events').insert(data).select().single()
+          if(error)throw error; S.events.push(r); S.events.sort((a,b)=>a.date.localeCompare(b.date))
+        }
+        toast('저장되었습니다.')
+        overlay.remove(); refreshAll()
+      }catch(e){toast(e.message||'저장 실패','err')}
+    }
+    actions.append(cancelBtn,saveBtn); body.append(actions)
+  }
+  rebuildBody()
+  overlay.append(modal); document.body.append(overlay)
+}
+
+// ── tap helper (체이닝용) ────────────────────────────────
+Element.prototype.tap=function(fn){fn(this);return this}
+
+// ── 초기화 ──────────────────────────────────────────────
+;(async function init(){
+  if(SUPABASE_URL.includes('YOUR_PROJECT')){
+    root().innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;color:#374151"><div style="font-size:48px">⚙️</div><div style="font-size:18px;font-weight:700">설정이 필요합니다</div><div style="font-size:13px;color:#6b7280;text-align:center;max-width:400px">index.html 파일 상단의 SUPABASE_URL과 SUPABASE_KEY를<br>Supabase 프로젝트 정보로 교체하세요.<br><br>자세한 방법은 README.md를 참고하세요.</div></div>'
+    return
+  }
+  const{data:{session}}=await sb.auth.getSession()
+  if(session){
+    S.user=session.user
+    const{data:prof}=await sb.from('profiles').select('*').eq('id',S.user.id).single()
+    S.profile=prof
+    await DB.load()
+  }
+  render()
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_OUT'){S.user=null;S.profile=null;render()}
+  })
+})()
+</script>
+</body>
+</html>

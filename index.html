@@ -192,7 +192,7 @@ const DB = {
     return data
   },
   async getFileUrl(path) {
-    const {data} = await sb.storage.from('documents').createSignedUrl(path, 60)
+    const {data} = await sb.storage.from('documents').createSignedUrl(path, 30)
     return data?.signedUrl||null
   },
   async deleteDoc(doc) {

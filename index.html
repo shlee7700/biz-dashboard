@@ -154,11 +154,17 @@ const toast = (msg, type='ok') => {
   if(toastT)clearTimeout(toastT)
   toastT=setTimeout(()=>t?.remove(),3200)
 }
-const isAdmin = () => S.profile?.role==='admin'
+
+// ══════════════════════════════════════════════════════
+// ★ [버그수정 1] canView에 isFullViewer() 적용
+// 수정 전: const canView = uid => isAdmin() || S.profile?.unit_ids?.includes(uid)
+// 수정 후: isFullViewer() 조건 추가
+// ══════════════════════════════════════════════════════
+const isAdmin      = () => S.profile?.role==='admin'
 const isFullViewer = () => S.profile?.role==='full_viewer'
-const canView = uid => isAdmin() || S.profile?.unit_ids?.includes(uid)
-const canUp   = uid => isAdmin() || (S.profile?.role==='uploader' && S.profile?.unit_ids?.includes(uid))
-const getUnit = id => S.units.find(u=>u.id===id)
+const canView      = uid => isAdmin() || isFullViewer() || S.profile?.unit_ids?.includes(uid)
+const canUp        = uid => isAdmin() || (S.profile?.role==='uploader' && S.profile?.unit_ids?.includes(uid))
+const getUnit      = id => S.units.find(u=>u.id===id)
 
 // ── Supabase API ─────────────────────────────────────────
 const DB = {
@@ -333,7 +339,6 @@ function renderDashboard() {
   const lw=sortedEvs.filter(e=>e.type==='weekly'&&e.date<=td).at(-1)||null
   const lm=sortedEvs.filter(e=>e.type==='monthly'&&e.date<=td).at(-1)||null
 
-  // 왼쪽: 예정 일정
   function makeUpcomingItem(ev){
     const unit=getUnit(ev.unit_id)
     const color=unit?.color||'#9ca3af'
@@ -348,7 +353,6 @@ function renderDashboard() {
     titleWrap.append(titleRow,el('div',{style:{fontSize:'11px',color:'#6b7280',marginTop:'3px'}},`📅 ${fmtD(ev.date)} ${ev.time||''}${ev.end_time?' ~ '+ev.end_time:''}${ev.location?' | '+ev.location:''}`))
     hdr.append(titleWrap)
     wrap.append(hdr)
-    // 문서 목록
     if(evDocs.length===0){
       wrap.append(el('div',{style:{padding:'6px 14px 10px',fontSize:'11px',color:'#d1d5db'}},'첨부 자료 없음'))
     } else {
@@ -374,7 +378,6 @@ function renderDashboard() {
     return wrap
   }
 
-  // 오른쪽: 과거 보고 현황
   function makePastSection(ev, labelColor, labelBg, icon, label){
     if(!ev) return el('div',{cls:'card mb12',style:{padding:'12px'}},el('div',{style:{fontSize:'12px',fontWeight:'700',color:labelColor,marginBottom:'6px'}},`${icon} ${label}`),el('div',{cls:'ts tmu'},'완료된 일정이 없습니다'))
     const rows=el('div',{style:{padding:'6px 10px'}})
@@ -410,7 +413,7 @@ function renderDashboard() {
   const left=el('div',{})
   left.append(el('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}},
     el('div',{style:{fontSize:'15px',fontWeight:'800'}},'📅 예정 일정 및 회의 자료'),
-    el('button',{cls:'btn btn-sm'},  '전체 일정 →').tap(b=>{b.onclick=()=>{S.view='calendar';refreshAll()}})
+    el('button',{cls:'btn btn-sm'},'전체 일정 →').tap(b=>{b.onclick=()=>{S.view='calendar';refreshAll()}})
   ))
   if(upcoming.length===0) left.append(el('div',{cls:'empty'},'예정된 일정이 없습니다'))
   else for(const ev of upcoming) left.append(makeUpcomingItem(ev))
@@ -432,7 +435,6 @@ function renderUnit(){
   const allEvs=S.events.filter(e=>(e.unit_id===unit.id||e.unit_id==='all')&&e.type===S.reportTab).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time))
   const frag=document.createDocumentFragment()
 
-  // 헤더
   const ph=el('div',{cls:'ph'})
   const titleBlock=el('div',{cls:'flex',style:{gap:'12px'}})
   titleBlock.append(el('span',{cls:'udot',style:{background:unit.color,width:'12px',height:'12px'}}),
@@ -446,7 +448,6 @@ function renderUnit(){
   }
   frag.append(ph)
 
-  // 탭
   const tabs=el('div',{cls:'tabs'})
   for(const [id,lbl] of [['weekly','주요사항 심층보고 (주간)'],['monthly','월간보고']]){
     const btn=el('button',{cls:`tab${S.reportTab===id?' active':''}`},lbl)
@@ -455,7 +456,6 @@ function renderUnit(){
   }
   frag.append(tabs)
 
-  // 업로드
   if(canUp(unit.id)){
     const evOpts=el('select',{cls:'input'})
     evOpts.append(el('option',{value:''},'-- 일정 선택 안 함 --'))
@@ -486,7 +486,6 @@ function renderUnit(){
     }
   }
 
-  // 문서 목록
   if(docs.length===0){frag.append(el('div',{cls:'empty'},'업로드된 문서가 없습니다'))}
   else{
     const list=el('div',{style:{display:'flex',flexDirection:'column',gap:'7px'}})
@@ -714,7 +713,15 @@ function renderAdmin(){
     const tbody=el('tbody')
     for(const u of S.users){
       const tr=el('tr')
-      tr.append(el('td',{style:{fontWeight:'700'}},u.name||''),el('td',{},u.role==='admin'?'관리자':u.role==='uploader'?'업로더':u.role==='full_viewer'?'전체열람자':'열람자')
+      // ══════════════════════════════════════════════════════
+      // ★ [버그수정 2] tr.append() 닫는 괄호 ) 누락 수정
+      // 수정 전: ...el('td',{}, ...역할표시)   ← ) 1개 부족
+      // 수정 후: ...el('td',{}, ...역할표시))  ← tr.append() 정상 종료
+      // ══════════════════════════════════════════════════════
+      tr.append(
+        el('td',{style:{fontWeight:'700'}},u.name||''),
+        el('td',{},u.role==='admin'?'관리자':u.role==='uploader'?'업로더':u.role==='full_viewer'?'전체열람자':'열람자')
+      )
       for(const unit of S.units){
         const has=u.role==='admin'||u.role==='full_viewer'||u.unit_ids?.includes(unit.id)
         tr.append(el('td',{style:{textAlign:'center'}},el('span',{cls:has?'yes':'no'},has?'✓':'–')))
@@ -831,7 +838,6 @@ function openModal(config){
       body.append(inp('location','장소','text','예: 대회의실, 화상회의'))
     }
 
-    // 저장 버튼
     const actions=el('div',{style:{display:'flex',gap:'8px',marginTop:'20px'}})
     const cancelBtn=el('button',{cls:'btn',style:{flex:'1'}},'취소');cancelBtn.onclick=()=>overlay.remove()
     const saveBtn=el('button',{cls:'btn btn-p',style:{flex:'2',justifyContent:'center'}},'저장')
@@ -852,7 +858,6 @@ function openModal(config){
           if(!data.email?.trim()||!data.name?.trim()){toast('이메일과 이름을 입력하세요','err');return}
           const{data:inv,error}=await sb.auth.admin.inviteUserByEmail(data.email,{data:{name:data.name,role:data.role,unit_ids:data.unit_ids}})
           if(error){
-            // inviteUserByEmail은 admin 권한 필요 - signUp으로 대체 안내
             toast('초대 기능은 Supabase Service Key가 필요합니다. README를 참고하세요.','err')
             return
           }

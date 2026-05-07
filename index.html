@@ -155,6 +155,7 @@ const toast = (msg, type='ok') => {
   toastT=setTimeout(()=>t?.remove(),3200)
 }
 const isAdmin = () => S.profile?.role==='admin'
+const isFullViewer = () => S.profile?.role==='full_viewer'
 const canView = uid => isAdmin() || S.profile?.unit_ids?.includes(uid)
 const canUp   = uid => isAdmin() || (S.profile?.role==='uploader' && S.profile?.unit_ids?.includes(uid))
 const getUnit = id => S.units.find(u=>u.id===id)
@@ -302,7 +303,7 @@ function renderSidebar() {
     el('div',{cls:'avatar'},ini(S.profile?.name)),
     el('div',{style:{marginLeft:'8px',overflow:'hidden'}},
       el('div',{style:{fontSize:'12px',fontWeight:'700',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},S.profile?.name||S.user?.email||''),
-      el('div',{style:{fontSize:'10px',color:'#9ca3af'}},S.profile?.role==='admin'?'관리자':S.profile?.role==='uploader'?'업로더':'열람자')
+      el('div',{style:{fontSize:'10px',color:'#9ca3af'}},S.profile?.role==='admin'?'관리자':S.profile?.role==='uploader'?'업로더':S.profile?.role==='full_viewer'?'전체열람자':'열람자')
     )
   ))
   const logBtn=el('button',{cls:'btn btn-sm',style:{width:'100%',justifyContent:'center',marginTop:'8px'}},'로그아웃')
@@ -696,7 +697,7 @@ function renderAdmin(){
     const list=el('div',{style:{display:'flex',flexDirection:'column',gap:'7px'}})
     for(const u of S.users){
       const row=el('div',{cls:'row'})
-      row.append(el('div',{cls:'avatar'},ini(u.name||u.id)),el('div',{style:{flex:'1'}},el('div',{cls:'fw7 ts'},u.name||'(이름없음)'),el('div',{cls:'txs tmu mt8'},`${u.role==='admin'?'관리자':u.role==='uploader'?'업로더':'열람자'} · ${u.unit_ids?.length||0}개 사업부`)))
+      row.append(el('div',{cls:'avatar'},ini(u.name||u.id)),el('div',{style:{flex:'1'}},el('div',{cls:'fw7 ts'},u.name||'(이름없음)'),el('div',{cls:'txs tmu mt8'},`${u.role==='admin'?'관리자':u.role==='uploader'?'업로더':u.role==='full_viewer'?'전체열람자':'열람자'} · ${u.unit_ids?.length||0}개 사업부`)))
       const editBtn=el('button',{cls:'btn btn-sm'},'수정');editBtn.onclick=()=>openModal({type:'editProfile',data:{...u}})
       row.append(editBtn); list.append(row)
     }
@@ -713,9 +714,9 @@ function renderAdmin(){
     const tbody=el('tbody')
     for(const u of S.users){
       const tr=el('tr')
-      tr.append(el('td',{style:{fontWeight:'700'}},u.name||''),el('td',{},u.role==='admin'?'관리자':u.role==='uploader'?'업로더':'열람자'))
+      tr.append(el('td',{style:{fontWeight:'700'}},u.name||''),el('td',{},u.role==='admin'?'관리자':u.role==='uploader'?'업로더':u.role==='full_viewer'?'전체열람자':'열람자')
       for(const unit of S.units){
-        const has=u.role==='admin'||u.unit_ids?.includes(unit.id)
+        const has=u.role==='admin'||u.role==='full_viewer'||u.unit_ids?.includes(unit.id)
         tr.append(el('td',{style:{textAlign:'center'}},el('span',{cls:has?'yes':'no'},has?'✓':'–')))
       }
       tbody.append(tr)
@@ -777,7 +778,7 @@ function openModal(config){
     }
     if(t==='inviteUser'){
       body.append(inp('email','이메일 *','email','user@company.com'),inp('name','이름 *'))
-      body.append(sel('role','역할',[['viewer','열람자'],['uploader','업로더'],['admin','관리자']]))
+      body.append(sel('role','역할',[['viewer','열람자'],['full_viewer','전체열람자'],['uploader','업로더'],['admin','관리자']]))
       const ugrp=el('div',{cls:'fg'})
       ugrp.append(el('label',{cls:'lbl'},'접근 가능 사업부'))
       const checks=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}})
@@ -792,7 +793,7 @@ function openModal(config){
     }
     if(t==='editProfile'){
       body.append(inp('name','이름'))
-      body.append(sel('role','역할',[['viewer','열람자'],['uploader','업로더'],['admin','관리자']]))
+      body.append(sel('role','역할',[['viewer','열람자'],['full_viewer','전체열람자'],['uploader','업로더'],['admin','관리자']]))
       const ugrp=el('div',{cls:'fg'})
       ugrp.append(el('label',{cls:'lbl'},'접근 가능 사업부'))
       const checks=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}})
